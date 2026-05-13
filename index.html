@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chandrayaan-3 Mission</title>
+
+  <!-- p5.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+
+<script>
+/**
+ * CHANDRAYAAN-3: THE COMPLETE JOURNEY
+ * Phase 1: Mission Briefing Interface
+ */
+
+let missionFont;
+let glowValue = 20;
+let glowDir = 1;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  textFont('Courier New');
+}
+
+function draw() {
+  background(2, 5, 10);
+
+  drawVignette();
+
+  glowValue += 0.5 * glowDir;
+  if (glowValue > 30 || glowValue < 15) glowDir *= -1;
+
+  // ISRO Logo
+  drawISROLogo(width / 2 - 180, height * 0.15);
+
+  textAlign(LEFT, CENTER);
+  noStroke();
+  fill(200, 200, 200, 200);
+  textSize(12);
+
+  let headerX = width / 2 - 110;
+
+  text("INDIAN SPACE RESEARCH ORGANISATION", headerX, height * 0.145);
+  text("भारतीय अंतरिक्ष अनुसंधान संगठन", headerX, height * 0.17);
+
+  // Main Title
+  textAlign(CENTER, CENTER);
+  fill(255, 140, 0);
+
+  drawingContext.shadowBlur = glowValue;
+  drawingContext.shadowColor = color(255, 100, 0);
+
+  textSize(48);
+  textStyle(BOLD);
+  text("CHANDRAYAAN - 3", width / 2, height * 0.32);
+
+  textSize(36);
+  text("THE COMPLETE JOURNEY", width / 2, height * 0.42);
+
+  drawingContext.shadowBlur = 0;
+  textStyle(NORMAL);
+
+  // Timeline
+  fill(100, 150, 200, 220);
+  textSize(13);
+
+  let lineH = 22;
+  let timelineY = height * 0.53;
+
+  text("Jul 14  →  Launch from Sriharikota", width / 2, timelineY);
+
+  text("5× Earth Orbit Manoeuvres  →  Lunar Transfer Trajectory",
+       width / 2, timelineY + lineH);
+
+  text("5× Moon Orbit Insertions  →  Vikram Separation",
+       width / 2, timelineY + lineH * 2);
+
+  text("Powered Descent  →  Pragyan Rover Deployment",
+       width / 2, timelineY + lineH * 3);
+
+  fill(150, 180, 220);
+
+  text("South Pole  ·  23 August 2023  ·  17:20 IST",
+       width / 2, timelineY + lineH * 4.5);
+
+  // Button
+  drawLaunchButton(width / 2, height * 0.75);
+
+  // Footer
+  fill(80, 100, 120);
+  textSize(10);
+
+  text("🔊 AUDIO ENABLED   ·   JAI HIND   ·   जय हिंद",
+       width / 2, height * 0.85);
+}
+
+function drawISROLogo(x, y) {
+  push();
+
+  translate(x, y);
+
+  noFill();
+  stroke(255, 140, 0);
+  strokeWeight(1.5);
+
+  ellipse(0, 0, 50, 25);
+
+  fill(255, 140, 0);
+  ellipse(0, 0, 8, 8);
+
+  noFill();
+  arc(0, 0, 35, 45, PI, TWO_PI);
+
+  pop();
+}
+
+function drawLaunchButton(x, y) {
+  let btnW = 300;
+  let btnH = 50;
+
+  push();
+
+  rectMode(CENTER);
+
+  noFill();
+  stroke(255, 140, 0, 150);
+
+  drawingContext.shadowBlur = 15;
+  drawingContext.shadowColor = color(255, 100, 0);
+
+  rect(x, y, btnW, btnH);
+
+  drawingContext.shadowBlur = 0;
+
+  fill(255, 140, 0);
+  noStroke();
+
+  textSize(16);
+
+  triangle(x - 65, y - 6, x - 65, y + 6, x - 55, y);
+
+  text("INITIATE MISSION", x + 10, y);
+
+  pop();
+}
+
+function drawVignette() {
+  let gradient = drawingContext.createRadialGradient(
+    width / 2,
+    height / 2,
+    0,
+    width / 2,
+    height / 2,
+    width * 0.8
+  );
+
+  gradient.addColorStop(0, 'rgba(10, 20, 40, 0)');
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+
+  drawingContext.fillStyle = gradient;
+
+  rect(0, 0, width, height);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+
+</body>
+</html>
