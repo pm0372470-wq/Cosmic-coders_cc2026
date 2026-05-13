@@ -220,3 +220,129 @@ class SmokeParticle {
   display(){noStroke();fill(red(this.color),green(this.color),blue(this.color),this.alpha);ellipse(this.x,this.y,this.size);}
   isDead(){return this.alpha<=0;}
 }
+
+// ── HUD ─────────────────────────────────────────────────────────────────────
+function drawLegacyTicker() {
+  fill(0,0,0,180); rect(0,100,width,140);
+  fill(255,180,0); textSize(13); textAlign(LEFT);
+  text("✦ ISRO LEGACY", 20, 125);
+  fill(200); textSize(11);
+  text("✦ 1963 - First rocket parts on bicycle & bullock cart to Thumba site", 20,155);
+  text("✦ 1980 - SLV-3 places Rohini in orbit; India enters space independently", 20,185);
+  text("✦ 1994 - PSLV debut: World's most reliable launcher with 50+ successes", 20,215);
+}
+
+function drawTopHUD() {
+  fill(255,150,0); textSize(12); textAlign(LEFT);
+  text("🚀 CHANDRAYAAN - 3", 20, 35);
+  fill(100,150,255); text("LAUNCH COUNTDOWN", 20, 55);
+  textAlign(RIGHT);
+  text("T + 00:00:0" + max(0,5-countdown), width-20, 35);
+}
+
+function handleCountdown() {
+  if (frameCount%60===0 && countdown>0) countdown--;
+  if (countdown>0) {
+    fill(255,180,0); textAlign(CENTER); textSize(100);
+    text(countdown, width/2, height/2);
+  }
+}
+
+// ── Environment ──────────────────────────────────────────────────────────────
+function drawInfrastructure() {
+  let rx = width/2;
+  drawLatticeTower(rx-140); drawLatticeTower(rx+140);
+  let armGap = propulsionActive ? map(liftOffSpeed,0,10,0,180) : 0;
+  stroke(100); strokeWeight(5);
+  line(rx-140,height-300,rx-25-armGap,height-300);
+  line(rx+140,height-300,rx+25+armGap,height-300);
+  noStroke();
+}
+
+function drawLatticeTower(x) {
+  for (let i = 0; i < 10; i++) {
+    fill(i%2===0 ? color(220,0,0) : color(255));
+    rect(x-15, height-100-(i+1)*40, 30, 40);
+  }
+  fill(255,0,0);
+  if (frameCount%40<20) ellipse(x, height-510, 10, 10);
+}
+
+function drawCrowd(people) {
+  for (let p of people) {
+    fill(240,200,160); ellipse(p.x,p.y,8,8);
+    stroke(240,200,160); line(p.x,p.y+4,p.x,p.y+15);
+    if (propulsionActive) line(p.x,p.y+6,p.x+sin(frameCount*0.2)*10,p.y-5);
+    noStroke();
+    fill(255,153,51); rect(p.x+5,p.y-15,10,3);
+    fill(19,136,8);   rect(p.x+5,p.y-9, 10,3);
+  }
+}
+
+function drawStylizedClouds() {
+  fill(255,255,255,80);
+  for (let c of clouds) {
+    for (let j = 0; j < 8; j++) ellipse(c.x+(j*18), c.y, 45, 45);
+    c.x += c.speed;
+    if (c.x > width) c.x = -200;
+  }
+}
+
+function drawStylizedGrass() {
+  fill(10,45,25);
+  for (let i = 0; i < width; i+=25) triangle(i,height-100,i+12,height-135,i+25,height-100);
+}
+
+// ── India Flag ───────────────────────────────────────────────────────────────
+function drawIndiaFlag(x, y) {
+  push(); translate(x, y);
+  stroke(180); strokeWeight(4); line(0,-70,0,40); noStroke();
+  let wave = sin(frameCount*0.08)*6;
+  fill(255,153,51);
+  beginShape(); vertex(0,-70); vertex(70+wave,-65); vertex(70+wave,-48); vertex(0,-48); endShape(CLOSE);
+  fill(255);
+  beginShape(); vertex(0,-48); vertex(70+wave,-43); vertex(70+wave,-26); vertex(0,-26); endShape(CLOSE);
+  fill(19,136,8);
+  beginShape(); vertex(0,-26); vertex(70+wave,-21); vertex(70+wave,-4); vertex(0,-4); endShape(CLOSE);
+  stroke(0,0,150); strokeWeight(1.5); noFill(); ellipse(35,-36,10,10);
+  pop();
+}
+
+// ── Electric Pillars ─────────────────────────────────────────────────────────
+function drawElectricPillars() {
+  drawElectricTower(width/2-320, height-100, 180);
+  drawElectricTower(width/2-460, height-100, 150);
+  drawElectricTower(width/2+350, height-100, 190);
+  stroke(80); strokeWeight(1.5); noFill();
+  beginShape();
+  for (let t=0;t<=1;t+=0.05) vertex(lerp(width/2-460,width/2-320,t), lerp(height-250,height-280,t)+sin(t*PI)*15);
+  endShape();
+  beginShape();
+  for (let t=0;t<=1;t+=0.05) vertex(lerp(width/2-460,width/2-320,t), lerp(height-235,height-265,t)+sin(t*PI)*15);
+  endShape();
+  beginShape();
+  for (let t=0;t<=1;t+=0.05) vertex(lerp(width/2+350,width,t), lerp(height-290,height-240,t)+sin(t*PI)*12);
+  endShape();
+  noStroke();
+}
+
+function drawElectricTower(x, groundY, h) {
+  push(); translate(x, groundY);
+  stroke(160,160,180); strokeWeight(2); noFill();
+  line(-10,0,-5,-h); line(10,0,5,-h);
+  let steps = floor(h/30);
+  for (let i=0;i<=steps;i++) {
+    let y1=-i*30, sp=map(i,0,steps,10,5);
+    line(-sp,y1,sp,y1);
+    if(i<steps){line(-sp,y1,sp,y1-30);line(sp,y1,-sp,y1-30);}
+  }
+  let topY=-h; strokeWeight(2.5);
+  line(-20,topY,20,topY);
+  line(-15,topY+5,-15,topY-8); line(0,topY+5,0,topY-8); line(15,topY+5,15,topY-8);
+  noStroke();
+  fill(frameCount%50<25 ? color(255,30,30) : color(100,0,0));
+  ellipse(0, topY-10, 6, 6);
+  pop();
+}
+
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
