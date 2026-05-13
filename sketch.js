@@ -174,3 +174,49 @@ function draw() {
   handleRocketMovement();
   handleCountdown();
 }
+// ── Rocket ──────────────────────────────────────────────────────────────────
+function handleRocketMovement() {
+  let rx = width/2;
+  if (countdown <= 0) {
+    propulsionActive = true;
+    liftOffSpeed += 0.04;
+    rocketY -= liftOffSpeed;
+    translate(random(-1,1)*min(liftOffSpeed,4), random(-1,1)*min(liftOffSpeed,4));
+    for (let i = 0; i < 6; i++) smokeParticles.push(new SmokeParticle(rx, rocketY+80));
+  }
+  for (let i = smokeParticles.length-1; i >= 0; i--) {
+    smokeParticles[i].update();
+    smokeParticles[i].display();
+    if (smokeParticles[i].isDead()) smokeParticles.splice(i,1);
+  }
+  drawAdvancedRocket(rx, rocketY);
+}
+
+function drawAdvancedRocket(x, y) {
+  push(); translate(x, y); strokeWeight(1); stroke(150);
+  fill(230); rect(-55,-80,30,160,5); rect(25,-80,30,160,5);
+  fill(200,50,0);
+  triangle(-55,-80,-25,-80,-40,-110); triangle(25,-80,55,-80,40,-110);
+  fill(255);
+  beginShape();
+  vertex(0,-220); bezierVertex(15,-220,25,-180,25,-160);
+  vertex(-25,-160); bezierVertex(-25,-180,-15,-220,0,-220);
+  endShape(CLOSE);
+  rect(-25,-160,50,240);
+  noStroke(); fill(0,50,150); textSize(8); textAlign(CENTER); text("ISRO",0,-120);
+  fill(255,100,0); rect(-25,-30,50,10);
+  fill(40); rect(-45,80,10,12); rect(35,80,10,12); rect(-15,80,30,18);
+  pop();
+}
+
+class SmokeParticle {
+  constructor(x,y) {
+    this.x=x+random(-25,25); this.y=y;
+    this.vx=random(-1.5,1.5); this.vy=random(2,6);
+    this.alpha=255; this.size=random(15,35);
+    this.color=lerpColor(color(255,160,0),color(120),random(0.3,0.8));
+  }
+  update(){this.x+=this.vx;this.y+=this.vy;this.alpha-=3.5;this.size+=1.2;}
+  display(){noStroke();fill(red(this.color),green(this.color),blue(this.color),this.alpha);ellipse(this.x,this.y,this.size);}
+  isDead(){return this.alpha<=0;}
+}
