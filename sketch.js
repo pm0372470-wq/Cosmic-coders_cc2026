@@ -135,3 +135,42 @@ function drawVignette() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
+/**
+ * CHANDRAYAAN-3 — PHASE 2: LAUNCH SITE
+ */
+
+let countdown = 5;
+let clouds = [], spectatorsLeft = [], spectatorsRight = [], smokeParticles = [];
+let rocketY, propulsionActive = false, liftOffSpeed = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  textFont('Courier New');
+  rocketY = height - 100;
+  for (let i = 0; i < 8; i++)
+    clouds.push({x:random(width), y:random(height*0.1,height*0.4), speed:random(0.2,0.5)});
+  for (let i = 0; i < 15; i++) {
+    spectatorsLeft.push({x:random(20,180),   y:height-120+random(20)});
+    spectatorsRight.push({x:width-random(20,180), y:height-120+random(20)});
+  }
+}
+
+function draw() {
+  background(7, 24, 60);
+  drawStylizedClouds();
+  drawLegacyTicker();
+  drawTopHUD();
+
+  fill(15,30,20); noStroke();
+  rect(0, height-100, width, 100);
+  drawStylizedGrass();
+
+  drawCrowd(spectatorsLeft);
+  drawCrowd(spectatorsRight);
+  drawInfrastructure();
+  drawElectricPillars();
+  drawIndiaFlag(width/2+220, height-240);
+
+  handleRocketMovement();
+  handleCountdown();
+}
