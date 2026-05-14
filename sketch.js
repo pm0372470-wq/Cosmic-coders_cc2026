@@ -2,14 +2,21 @@
 // GLOBAL VARIABLES & STATE
 // ==========================================
 let currentPhase = 1, glowValue = 20, glowDir = 1;
-let countdown = 5, clouds = [], spectatorsLeft = [], spectatorsRight = [], launchSmokeParticles = [];
+let countdown = 99, clouds = [], spectatorsLeft = [], spectatorsRight = [], launchSmokeParticles = [];
 let launchRocketY, propulsionActive = false, liftOffSpeed = 0;
+
 let mode = 'sep', sepStage = 0, sepTimer = 0, sepRocketY, rVY = 1.6;
 let boosters = [], flL = null, flR = null, propM = null, parkAngle = 0, sepSmoke = [];
 let orbitPhase = 0, orbitAngle = 0, missionSec = 0, orbitSmokeParticles = [], stars = [];
 let apogees = [45163, 51400, 61400, 71351, 127609], orbDays = [2, 4, 7, 11, 16];
 let orbits = [{a: 100, b: 72}, {a: 148, b: 100}, {a: 196, b: 128}, {a: 250, b: 152}, {a: 312, b: 170}];
-let moonMode = 0, moonTimer = 0, moonOrbitAngle = 0, moonOrbitCount = 0, landerY = 0, roverX = 0, roverDir = 1, moonCraters = [];
+
+let moonMode = 0, moonTimer = 0, moonOrbitAngle = 0, moonOrbitCount = 0, landerY = 0, roverX = 0, moonCraters = [];
+
+let waitingForUserIgnition = true;
+let waitingForStagingClick = false;
+let waitingForDescentClick = false;
+let showInitialControlHint = true; 
 
 const SEP_LABELS = ["ASCENT", "BOOSTER SEP", "FAIRING SEP", "PROP MODULE SEP", "PARKING ORBIT"];
 const SEP_MSGS = [
@@ -42,9 +49,36 @@ function draw() {
 
 function windowResized() { resizeCanvas(windowWidth, windowHeight); }
 
+// ==========================================
+// CORE INTERACTION LOGIC - FIXED
+// ==========================================
 function mousePressed() {
-  // Updated hit box for the new prominent Launch Button
-  if (currentPhase === 1 && abs(mouseX - width / 2) < 100 && abs(mouseY - height * 0.75) < 25) currentPhase = 2;
+  if (currentPhase === 1 && abs(mouseX - width / 2) < 100 && abs(mouseY - height * 0.75) < 25) {
+    currentPhase = 2;
+    return;
+  }
+
+  if (currentPhase === 2 && waitingForUserIgnition) {
+    waitingForUserIgnition = false;
+    countdown = 3; 
+    return;
+  }
+
+  // FIXED: Explicitly increment sepStage to break out of the loop
+  if (currentPhase === 3 && waitingForStagingClick) {
+    waitingForStagingClick = false;
+    sepStage++; 
+    sepTimer = 0; 
+    sepSmoke = [];
+    if (sepStage > 3) rVY = 0.5; // Prep for orbit drift
+    return;
+  }
+
+  if (currentPhase === 4 && waitingForDescentClick) {
+    waitingForDescentClick = false;
+    moonTimer = 1; 
+    return;
+  }
 }
 
 // ==========================================
@@ -86,16 +120,12 @@ function drawISROLogo(x, y) {
 function drawLaunchButton(x, y) {
   push(); rectMode(CENTER);
   let isHover = abs(mouseX - x) < 100 && abs(mouseY - y) < 25;
-  
-  // Fill color changes on hover
   fill(isHover ? color(255, 160, 0) : color(220, 100, 0));
   stroke(255, 200, 0); strokeWeight(2);
-  
   drawingContext.shadowBlur = isHover ? 25 : 15; 
   drawingContext.shadowColor = color(255, 120, 0);
-  rect(x, y, 200, 50, 8); // Rounded rectangle
+  rect(x, y, 200, 50, 8); 
   drawingContext.shadowBlur = 0;
-  
   fill(255); noStroke(); textSize(20); textStyle(BOLD); textAlign(CENTER, CENTER);
   text("LAUNCH", x, y); 
   pop();
@@ -118,11 +148,13 @@ function drawPhase2() {
   drawCrowd(spectatorsLeft); drawCrowd(spectatorsRight);
   drawInfrastructure(); drawElectricPillars(); drawIndiaFlag(width / 2 + 220, height - 240);
   handleRocketMovement(); handleCountdown();
+  
+  if(waitingForUserIgnition) drawUserActionPrompt("CLICK MOUSE TO IGNITE");
   if (launchRocketY < -200) currentPhase = 3;
 }
 
 function handleRocketMovement() {
-  if (countdown <= 0) {
+  if (!waitingForUserIgnition && countdown <= 0) {
     propulsionActive = true; liftOffSpeed += 0.04; launchRocketY -= liftOffSpeed;
     translate(random(-1, 1) * min(liftOffSpeed, 4), random(-1, 1) * min(liftOffSpeed, 4));
     for (let i = 0; i < 6; i++) launchSmokeParticles.push(new LaunchSmokeParticle(width / 2, launchRocketY + 80));
@@ -161,12 +193,15 @@ function drawLegacyTicker() {
 function drawTopHUD() {
   fill(255, 150, 0); textSize(12); textAlign(LEFT); text("🚀 CHANDRAYAAN - 3", 20, 35);
   fill(100, 150, 255); text("LAUNCH COUNTDOWN", 20, 55); textAlign(RIGHT);
-  text("T + 00:00:0" + max(0, 5 - countdown), width - 20, 35);
+  if(waitingForUserIgnition) text("AWAITING IGNITION", width - 20, 35);
+  else text("T + 00:00:0" + max(0, 3 - countdown), width - 20, 35); 
 }
 
 function handleCountdown() {
-  if (frameCount % 60 === 0 && countdown > 0) countdown--;
-  if (countdown > 0) { fill(255, 180, 0); textAlign(CENTER); textSize(100); text(countdown, width / 2, height / 2); }
+  if(!waitingForUserIgnition) {
+    if (frameCount % 60 === 0 && countdown > 0) countdown--;
+    if (countdown > 0) { fill(255, 180, 0); textAlign(CENTER); textSize(100); text(countdown, width / 2, height / 2); }
+  }
 }
 
 function drawInfrastructure() {
@@ -223,7 +258,7 @@ function drawElectricTower(x, groundY, h) {
 }
 
 // ==========================================
-// PHASE 3: SEPARATION & ORBIT
+// PHASE 3: SEPARATION & ORBIT (INTERACTIVE)
 // ==========================================
 function drawPhase3() {
   background(3, 8, 22); drawStars(); drawSun();
@@ -231,30 +266,64 @@ function drawPhase3() {
 }
 
 function drawSep() {
-  let cx = width / 2; sepTimer++;
+  let cx = width / 2; 
+  
+  if(!waitingForStagingClick) sepTimer++;
+  
   if (sepStage === 0) {
-    rVY += 0.02; sepRocketY -= rVY; spawnSepSmoke(cx, sepRocketY + 90, 6, true); drawRocketFull(cx, sepRocketY);
-    if (sepRocketY < height * 0.38) nextSep();
+    rVY += 0.02; sepRocketY -= rVY; 
+    spawnSepSmoke(cx, sepRocketY + 90, 6, true); 
+    drawRocketFull(cx, sepRocketY);
+    if (sepRocketY < height * 0.38) {
+      sepRocketY = height * 0.38; 
+      waitingForStagingClick = true; 
+    }
   } else if (sepStage === 1) {
-    sepRocketY -= rVY * 0.6; spawnSepSmoke(cx, sepRocketY + 60, 3, false);
-    if (boosters.length === 0) { boosters.push({x:cx-42,y:sepRocketY+30,vx:-2.2,vy:1,rot:0,rs:0.05},{x:cx+42,y:sepRocketY+30,vx:2.2,vy:1,rot:0,rs:-0.05}); }
+    sepRocketY -= rVY * 0.6; 
+    spawnSepSmoke(cx, sepRocketY + 60, 3, false);
+    
+    if (boosters.length === 0) { 
+      boosters.push({x:cx-42,y:sepRocketY+30,vx:-2.2,vy:1,rot:0,rs:0.05},{x:cx+42,y:sepRocketY+30,vx:2.2,vy:1,rot:0,rs:-0.05}); 
+    }
     boosters.forEach(b => {
       b.x+=b.vx; b.y+=b.vy; b.vy+=0.04; b.rot+=b.rs; spawnSepSmoke(b.x, b.y+10, 1, false);
       push(); translate(b.x,b.y); rotate(b.rot); fill(180,180,200); stroke(120); rect(-10,-40,20,80,3); fill(200,60,60); noStroke(); triangle(-10,-40,10,-40,0,-62); pop();
-    }); drawRocketCore(cx, sepRocketY); if (sepTimer > 90) { boosters=[]; nextSep(); }
+    }); 
+    drawRocketCore(cx, sepRocketY); 
+    
+    if (sepTimer > 90) { 
+      boosters=[]; 
+      waitingForStagingClick = true; 
+    }
   } else if (sepStage === 2) {
-    sepRocketY -= rVY * 0.4; spawnSepSmoke(cx, sepRocketY + 50, 2, false);
+    sepRocketY -= rVY * 0.4; 
+    spawnSepSmoke(cx, sepRocketY + 50, 2, false);
+    
     if (!flL) { flL = {x:cx-15, y:sepRocketY-60, vx:-2.2, vy:-1.2, rot:0}; flR = {x:cx+15, y:sepRocketY-60, vx: 2.2, vy:-1.2, rot:0}; }
     [flL, flR].forEach((f, i) => {
       f.x+=f.vx; f.y+=f.vy; f.rot += (i?0.04:-0.04);
       push(); translate(f.x,f.y); rotate(f.rot); fill(220,215,200); stroke(140);
       beginShape(); vertex(0,26); vertex(i?20:-20,26); vertex(i?20:-20,-26); vertex(i?4:-4,-56); vertex(0,-56); endShape(CLOSE); pop();
-    }); drawRocketCore(cx, sepRocketY); if (sepTimer > 88) { flL=flR=null; nextSep(); }
+    }); 
+    drawRocketCore(cx, sepRocketY); 
+    
+    if (sepTimer > 88) { 
+      flL=flR=null; 
+      waitingForStagingClick = true; 
+    }
   } else if (sepStage === 3) {
-    sepRocketY -= rVY * 0.25; if (!propM) propM = {x:cx, y:sepRocketY+46, vx:0.5, vy:2.2};
+    sepRocketY -= rVY * 0.25; 
+    
+    if (!propM) propM = {x:cx, y:sepRocketY+46, vx:0.5, vy:2.2};
     propM.x+=propM.vx; propM.y+=propM.vy; propM.vy+=0.03; spawnSepSmoke(propM.x, propM.y+16, 2, false);
+    
     push(); translate(propM.x, propM.y); fill(150,140,120); stroke(110); rect(-20,-13,40,30,4); fill(25,65,155); noStroke(); rect(-44,-6,22,12,2); rect(22,-6,22,12,2); fill(75); ellipse(0,20,18,8); drawFlame(0,22); pop();
-    drawSatOnly(cx, sepRocketY); if (sepTimer > 110) { propM=null; nextSep(); }
+    drawSatOnly(cx, sepRocketY); 
+    
+    if (sepTimer > 110) { 
+      propM=null; 
+      waitingForStagingClick = true; 
+    }
   } else {
     parkAngle += 0.016; let oa=width*0.25, ob=height*0.18, tilt=-0.18, ocx=width/2, ocy=height*0.52;
     noFill(); stroke(255,220,80,50); push(); translate(ocx,ocy); rotate(tilt); ellipse(0,0,oa*2,ob*2); pop();
@@ -263,10 +332,9 @@ function drawSep() {
     spawnSepSmoke(sx, sy, 1, false); drawSatOnly(sx, sy); drawEarth(width/2, height*0.52);
     if (parkAngle > TWO_PI*2) { mode='orbit'; sepSmoke=[]; }
   }
+  
   updateSepSmoke(); drawSepHUD();
 }
-
-function nextSep() { sepStage++; sepTimer=0; sepSmoke=[]; }
 
 function drawOrbits() {
   let cx = width/2 - 30, cy = height/2 + 40;
@@ -307,30 +375,18 @@ function drawSatOnly(x, y) { push(); translate(x,y); fill(198,192,170); stroke(1
 
 function drawSatellite(x, y, a) { 
   push(); translate(x,y); rotate(a+HALF_PI); 
-  // Central Body
   fill(220,220,240); stroke(150); rect(-7,-10,14,20,2); 
-  // Solar Panels
-  fill(30,80,180); stroke(100); 
-  rect(-26,-6,19,12,1); // Left panel
-  rect(7,-6,19,12,1);   // Right panel
-  // Communication dish
-  fill(200); noStroke(); ellipse(0, -12, 6, 6);
-  pop(); 
+  fill(30,80,180); stroke(100); rect(-26,-6,19,12,1); rect(7,-6,19,12,1);  
+  fill(200); noStroke(); ellipse(0, -12, 6, 6); pop(); 
 }
 
 function drawEarth(cx, cy) {
-  // Better Earth glow
   for (let r=115;r>85;r-=5) { fill(30,80,200,map(r,85,115,40,0)); ellipse(cx,cy,r*2); }
-  // Better Earth shape & landmasses
   fill(20,80,200); ellipse(cx,cy,170); 
-  fill(30,140,30); 
-  ellipse(cx-15,cy-15,60,40); 
-  ellipse(cx+25,cy+15,40,30);
-  ellipse(cx-20,cy+25,30,20);
+  fill(30,140,30); ellipse(cx-15,cy-15,60,40); ellipse(cx+25,cy+15,40,30); ellipse(cx-20,cy+25,30,20);
 }
 
 function drawSun() {
-  // Changed to fixed small sun far away in the top right corner
   let sx = width - 80, sy = 80, sr = 35; 
   noStroke();
   for (let r=sr+40;r>sr;r-=5) { fill(180,130,0,map(r,sr,sr+40,40,0)); ellipse(sx,sy,r*2); }
@@ -358,8 +414,16 @@ class OrbitSmokeParticle {
 function drawSepHUD() {
   fill(255,200,0); textAlign(LEFT); text("🚀 CHANDRAYAAN-3", 18, 32);
   fill(0,160); rect(width/2-175,10,350,28,6); fill(78,255,175); textAlign(CENTER); text("▶ "+SEP_LABELS[min(sepStage,4)], width/2, 28);
+  
   fill(0,185); rect(width/2-280,height-46,560,32,6); stroke(255,200,0); noFill(); rect(width/2-280,height-46,560,32,6);
-  fill(255,218,115); noStroke(); text(SEP_MSGS[min(sepStage,4)], width/2, height-24);
+  fill(255,218,115); noStroke(); 
+  
+  if(waitingForStagingClick) {
+    drawUserActionPrompt("CLICK MOUSE TO SEPARATE");
+    text(SEP_MSGS[sepStage], width/2, height-24); // Dynamically read the accurate message length
+  } else {
+    text(SEP_MSGS[min(sepStage,4)], width/2, height-24);
+  }
 }
 
 // ==========================================
@@ -372,8 +436,11 @@ function initPhase4() {
 }
 
 function drawPhase4() {
-  background(3,8,22); drawStars(); moonTimer++;
+  background(3,8,22); drawStars(); 
+  if (moonMode < 2 || !waitingForDescentClick) moonTimer++;
+  
   if (moonMode===0) drawTransfer(); else if (moonMode===1) drawMoonOrbit(); else if (moonMode===2) drawLanding(); else drawRoverScene();
+  
   fill(255,200,0); textAlign(LEFT); text("🚀 CHANDRAYAAN-3",18,32);
   let lb=["TRANS-LUNAR INJECTION","LUNAR ORBIT INSERTION","POWERED DESCENT","PRAGYAN DEPLOYED"];
   fill(200,160,255); textSize(10); text(lb[moonMode],18,50);
@@ -395,69 +462,68 @@ function drawMoonOrbit() {
   drawMoonBody(mx,my,90); moonOrbitAngle+=0.013;
   let sx=mx+185*cos(moonOrbitAngle), sy=my+128*sin(moonOrbitAngle);
   drawSatellite(sx,sy,moonOrbitAngle); spawnSepSmoke(sx,sy,1,false); updateSepSmoke();
-  if (moonOrbitAngle>=TWO_PI){ moonOrbitAngle=0; moonOrbitCount++; if(moonOrbitCount>=3) moonMode=2; }
+  
+  if (moonOrbitAngle>=TWO_PI){ 
+    moonOrbitAngle=0; 
+    moonOrbitCount++; 
+    if(moonOrbitCount>=3) {
+      moonMode=2; 
+      waitingForDescentClick = true; 
+      moonTimer = 0;
+    } 
+  }
   drawMoonBar("LUNAR ORBIT INSERTION — "+moonOrbitCount+" of 3 orbits complete");
 }
 
 function drawLanding() {
-  drawMoonSurface(); if (landerY<height*0.655) landerY+=1.6; else if (moonTimer>100) moonMode=3;
-  if (landerY<height*0.655){ drawFlame(width/2,landerY+30); spawnSepSmoke(width/2,landerY+36,2,false); updateSepSmoke(); }
-  drawLander(width/2,landerY); drawMoonBar("POWERED DESCENT — Vikram lander braking engines firing");
+  drawMoonSurface(); 
+  if(waitingForDescentClick) {
+    drawUserActionPrompt("CLICK MOUSE TO BEGIN DESCENT");
+    drawLander(width/2, landerY); 
+  } else {
+    if (landerY<height*0.655) landerY+=1.6; else if (moonTimer>100) moonMode=3;
+    if (landerY<height*0.655){ drawFlame(width/2,landerY+30); spawnSepSmoke(width/2,landerY+36,2,false); updateSepSmoke(); }
+    drawLander(width/2,landerY);
+  }
+  drawMoonBar("POWERED DESCENT — Vikram lander braking engines firing");
 }
 
 function drawRoverScene() {
   drawMoonSurface(); drawLander(width/2,height*0.655);
-  if (moonTimer>65){ roverX+=roverDir*0.75; if(roverX>width*0.78||roverX<width*0.22) roverDir*=-1; }
+  if (keyIsDown(LEFT_ARROW)) { roverX -= 1.5; showInitialControlHint = false; } else if (keyIsDown(RIGHT_ARROW)) { roverX += 1.5; showInitialControlHint = false; }
+  roverX = constrain(roverX, width*0.15, width*0.85);
+
   if (moonTimer<78){ stroke(152); line(width/2+14,height*0.682,roverX,height*0.732); }
-  drawRoverSprite(roverX,height*0.731); drawMoonBar("PRAGYAN ROVER — Analysing lunar regolith  🌙");
+  drawRoverSprite(roverX,height*0.731); 
+  
+  if(showInitialControlHint) drawMoonBar("USE LEFT/RIGHT ARROW KEYS TO DRIVE PRAGYAN");
+  else drawMoonBar("PRAGYAN ROVER — Analysing lunar regolith  🌙");
+  
   if (moonTimer>140){ fill(255,215,0); textSize(20); textAlign(CENTER); text("INDIA ON THE MOON  •  23 AUG 2023  🇮🇳",width/2,height*0.22); }
 }
 
 function drawSmallEarth(cx,cy,er) { 
-  noStroke();
-  fill(20,80,200); ellipse(cx,cy,er*2); 
-  fill(30,140,30); 
-  ellipse(cx-er*0.15,cy-er*0.15,er*0.6,er*0.4); 
-  ellipse(cx+er*0.2,cy+er*0.1,er*0.5,er*0.3);
+  noStroke(); fill(20,80,200); ellipse(cx,cy,er*2); 
+  fill(30,140,30); ellipse(cx-er*0.15,cy-er*0.15,er*0.6,er*0.4); ellipse(cx+er*0.2,cy+er*0.1,er*0.5,er*0.3);
 }
 
 function drawMoonBody(cx,cy,r) { 
-  noStroke();
-  fill(200, 198, 190); ellipse(cx,cy,r*2); 
-  fill(170, 168, 160); 
-  ellipse(cx-r*0.25,cy-r*0.15,r*0.35,r*0.35);
-  ellipse(cx+r*0.3,cy+r*0.2,r*0.4,r*0.3);
-  ellipse(cx-r*0.1,cy+r*0.3,r*0.25,r*0.2);
+  noStroke(); fill(200, 198, 190); ellipse(cx,cy,r*2); 
+  fill(170, 168, 160); ellipse(cx-r*0.25,cy-r*0.15,r*0.35,r*0.35); ellipse(cx+r*0.3,cy+r*0.2,r*0.4,r*0.3); ellipse(cx-r*0.1,cy+r*0.3,r*0.25,r*0.2);
 }
 
-function drawMoonSurface() { 
-  fill(155,148,132); rect(0,height*0.72,width,height*0.28); 
-  moonCraters.forEach(c=>{fill(130); ellipse(c.x,c.y,c.r*2,c.r*0.6);}); 
-}
+function drawMoonSurface() { fill(155,148,132); rect(0,height*0.72,width,height*0.28); moonCraters.forEach(c=>{fill(130); ellipse(c.x,c.y,c.r*2,c.r*0.6);}); }
 
 function drawLander(x,y) { 
-  push(); translate(x,y); 
-  
-  // Deployment Stands/Legs
-  stroke(180); strokeWeight(2);
-  line(-12, 12, -22, 28); // Left outer leg
-  line(12, 12, 22, 28);   // Right outer leg
-  line(-12, 12, -10, 28); // Left inner brace
-  line(12, 12, 10, 28);   // Right inner brace
-  fill(150); noStroke();
-  ellipse(-22, 28, 10, 4); // Left outer footpad
-  ellipse(22, 28, 10, 4);  // Right outer footpad
-  ellipse(-10, 28, 6, 3);  // Left inner footpad
-  ellipse(10, 28, 6, 3);   // Right inner footpad
-  
-  // Lander Body (Gold Foil Box)
-  fill(215, 185, 80); 
-  rect(-16,-18,32,30,3); 
-  
-  // Central core/door
-  fill(40); rect(-8, -10, 16, 20, 2); 
-  pop(); 
+  push(); translate(x,y); stroke(180); strokeWeight(2);
+  line(-12, 12, -22, 28); line(12, 12, 22, 28); line(-12, 12, -10, 28); line(12, 12, 10, 28); 
+  fill(150); noStroke(); ellipse(-22, 28, 10, 4); ellipse(22, 28, 10, 4); ellipse(-10, 28, 6, 3); ellipse(10, 28, 6, 3); 
+  fill(215, 185, 80); rect(-16,-18,32,30,3); fill(40); rect(-8, -10, 16, 20, 2); pop(); 
 }
 
 function drawRoverSprite(x,y) { push(); translate(x,y); fill(52); ellipse(-20,10,14,14); ellipse(20,10,14,14); fill(180); rect(-22,-8,44,18,3); pop(); }
 function drawMoonBar(msg) { fill(0,185); rect(width/2-315,height-46,630,32,6); fill(240); textAlign(CENTER); text(msg,width/2,height-24); }
+
+function drawUserActionPrompt(txt) {
+  push(); textAlign(CENTER, CENTER); textSize(24); textStyle(BOLD); fill(255, 200, 0, 200 + sin(frameCount * 0.1) * 55); text(txt, width/2, height/2); pop();
+}
